@@ -1,0 +1,17 @@
+{
+  "name": "ci-cd",
+  "version": "1.0.0",
+  "description": "Proyecto de plantilla simple para demostrar un flujo de CI/CD.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ci-cd",
+    "template",
+    "nodejs"
+  ],
+  "author": "Daniel Gerardo Rondón García",
+  "license": "MIT"
+}
