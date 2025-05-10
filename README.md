@@ -26,3 +26,5 @@ Este proyecto utiliza GitHub Actions para la Integración Continua y el Desplieg
 - Ejecutar pruebas (si existen) en cada push y pull request.
 - Crear una release automáticamente cuando se hace un push a la rama `main` y se actualiza la versión en `package.json`.
 - El versionado sigue el estándar de Versionado Semántico (SemVer).
+
+## Test
