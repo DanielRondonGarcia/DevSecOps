@@ -16,5 +16,6 @@ jobs:
         with:
           token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
           default-branch: develop
+          target-branch: main
           release-type: node
           config-file: release-please-config.json
