@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/DanielRondonGarcia/CI-CD/compare/v1.0.1...v1.1.0) (2025-05-12)
+
+
+### Features
+
+* 98311 agregar nueva funcionalidad de ejemplo ([2913869](https://github.com/DanielRondonGarcia/CI-CD/commit/2913869baf2e90797464ee4ea147a695641dfffc))
+
 ## [1.0.1](https://github.com/DanielRondonGarcia/CI-CD/compare/v1.0.0...v1.0.1) (2025-05-12)
 
 
