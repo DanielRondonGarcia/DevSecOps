@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/DanielRondonGarcia/CI-CD/compare/v1.1.0...v1.1.1) (2025-05-12)
+
+
+### Bug Fixes
+
+* 98311 :bug: Se actualiza y ajusta problema del release ([115d685](https://github.com/DanielRondonGarcia/CI-CD/commit/115d685ffa1d030b45f39450e66459cb5336cf6b))
+
 ## [1.1.0](https://github.com/DanielRondonGarcia/CI-CD/compare/v1.0.1...v1.1.0) (2025-05-12)
 
 
