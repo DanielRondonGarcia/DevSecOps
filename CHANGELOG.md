@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/DanielRondonGarcia/CI-CD/compare/v1.0.0...v1.0.1) (2025-05-12)
+
+
+### Bug Fixes
+
+* 98311 ajuste render ([72ef507](https://github.com/DanielRondonGarcia/CI-CD/commit/72ef507a6f80dff611af7c90e5a24c56f09d8f0e))
+
 ## 1.0.0 (2025-05-10)
 
 
