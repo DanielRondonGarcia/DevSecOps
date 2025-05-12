@@ -63,7 +63,7 @@ El flujo general es el siguiente:
 graph TD
     A[Desarrollador hace commit convencional] --> B{Push a main?};
     B -- Sí --> C[GitHub Action: release-please se ejecuta];
-    C --> D{Hay commits para release? (feat, fix, BREAKING CHANGE)};
+    C --> D{"Hay commits para release? (feat, fix, BREAKING CHANGE)"};
     D -- Sí --> E[release-please crea/actualiza Release PR];
     E --> F[Release PR contiene: bump de versión en package.json y CHANGELOG.md actualizado];
     F --> G{Merge del Release PR?};
