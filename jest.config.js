@@ -3,7 +3,8 @@ module.exports = {
     testMatch: ['**/tests/**/*.test.js'],
     reporters: ['default', ['jest-sonar', { 
         outputDirectory: 'coverage',
-        outputName: 'test-reporter.xml' 
+        outputName: 'test-reporter.xml',
+        reportedFilePath: 'relative'
     }]],
     coverageReporters: ['lcov'],
     collectCoverage: true,

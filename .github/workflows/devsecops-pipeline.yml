@@ -57,6 +57,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run tests to generate coverage and test report
+        run: npm test
+
+      - name: Show generated test report (debug)
+        if: always()
+        run: |
+          echo "==== Begin coverage/test-reporter.xml ===="
+          if [ -f coverage/test-reporter.xml ]; then cat coverage/test-reporter.xml; else echo "coverage/test-reporter.xml not found"; fi
+          echo "==== End coverage/test-reporter.xml ===="
+
+      - name: Normalize path separators in test report
+        run: |
+          if [ -f coverage/test-reporter.xml ]; then
+            sed -i 's|\\|/|g' coverage/test-reporter.xml
+          fi
+
+      - name: Validate test report XML structure
+        run: |
+          python - << 'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          try:
+              ET.parse('coverage/test-reporter.xml')
+              print('Generic test execution XML is well-formed')
+          except Exception as e:
+              print('XML validation failed:', e)
+              sys.exit(1)
+          PY
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
