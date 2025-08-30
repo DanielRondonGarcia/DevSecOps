@@ -1,0 +1,11 @@
+# ZAP Scanning Rules
+# Format: IGNORE	<RULE_ID>	<URL_REGEX>	<PARAMETER>	<CWE_ID>	<WASCID>	<DESCRIPTION>
+
+# Ignore false positives for development endpoints
+IGNORE	10021	.*				# X-Content-Type-Options header missing
+IGNORE	10020	.*				# X-Frame-Options header missing
+IGNORE	10016	.*				# Web Browser XSS Protection Not Enabled
+IGNORE	10035	.*				# Strict-Transport-Security Header Not Set
+
+# Custom rules for this application
+# Add specific rules here based on your application requirements
