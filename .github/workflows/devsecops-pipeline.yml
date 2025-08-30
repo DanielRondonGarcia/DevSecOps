@@ -58,7 +58,7 @@ jobs:
         run: npm ci
 
       - name: SonarQube Scan
-        uses: sonarqube-quality-gate-action@master
+        uses: sonarqube-community/sonarqube-quality-gate-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -67,7 +67,7 @@ jobs:
         continue-on-error: true
 
       - name: SonarQube Quality Gate Check
-        uses: sonarqube-quality-gate-action@master
+        uses: sonarqube-community/sonarqube-quality-gate-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         continue-on-error: true
