@@ -342,11 +342,17 @@ jobs:
           # Usamos un delimitador diferente en sed (#) para más robustez
           sed -i "s#image: .*#image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}#g" k8s/deployment.yml
           echo "Updated deployment.yml with image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}"
+          # Validar sintaxis YAML después de la sustitución
+          echo "Validating YAML syntax..."
+          kubectl apply --dry-run=client -f k8s/deployment.yml
+          echo "YAML validation successful"
           
       - name: Apply Kubernetes manifests
         run: |
           sleep 1
-          kubectl apply -f k8s/
+          kubectl apply -f k8s/deployment.yml
+          kubectl apply -f k8s/service.yml
+          kubectl apply -f k8s/ingress.yml
           echo "Deployment successful!"
 
   # Job 7: DAST - Dynamic Application Security Testing with OWASP ZAP
