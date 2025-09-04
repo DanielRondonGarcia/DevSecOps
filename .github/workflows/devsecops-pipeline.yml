@@ -190,7 +190,7 @@ jobs:
     if: always() && (needs.sast-sonarqube.result == 'success' || needs.sast-sonarqube.result == 'skipped') && (needs.sca-trivy.result == 'success' || needs.sca-trivy.result == 'skipped') && (needs.iac-security-checkov.result == 'success' || needs.iac-security-checkov.result == 'skipped')
     outputs:
       image-url: ${{ steps.meta.outputs.tags }}
-      image-tag: sha-${{ github.sha }}
+      image-tag: ${{ steps.extract_sha_tag.outputs.sha_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -215,6 +215,21 @@ jobs:
             type=ref,event=pr
             type=sha,format=short,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract short SHA tag for deployment
+        id: extract_sha_tag
+        shell: bash
+        run: |
+          echo "All computed tags:" 
+          echo "${{ steps.meta.outputs.tags }}"
+          SHA_LINE=$(echo "${{ steps.meta.outputs.tags }}" | grep -E ':sha-[0-9a-f]+' | head -n 1 || true)
+          if [ -z "$SHA_LINE" ]; then
+            echo "No sha-* tag found in metadata tags."
+            exit 1
+          fi
+          SHA_TAG=${SHA_LINE##*:}
+          echo "Using SHA tag: $SHA_TAG"
+          echo "sha_tag=$SHA_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         id: build
