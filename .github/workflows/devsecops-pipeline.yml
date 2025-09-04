@@ -266,17 +266,8 @@ jobs:
         with:
           version: "v3.13.1" # O la versión que prefieras
 
-      - name: Create/Update Cloudflare Tunnel Secret
-        run: |
-          # 1. Obtenemos el token del secreto de GitHub
-          TUNNEL_TOKEN="${{ secrets.CF_TUNNEL_TOKEN }}"
-
-          # 2. Creamos el secreto directamente con el token
-          # El chart espera una clave TUNNEL_TOKEN en el secreto
-          kubectl create secret generic tunnel-credentials \
-            --from-literal=TUNNEL_TOKEN="$TUNNEL_TOKEN" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Cloudflare tunnel secret created/updated successfully."
+      # El chart cloudflare-tunnel-remote maneja el token directamente
+      # No necesitamos crear un secret manualmente
 
       - name: Add Cloudflare Helm repo
         run: |
@@ -287,10 +278,9 @@ jobs:
         run: |
           # El comando 'helm upgrade --install' es idempotente.
           # Instala el chart si no existe, o lo actualiza si ya existe.
-          helm upgrade --install my-ingress-controller cloudflare/cloudflare-tunnel \
+          helm upgrade --install my-ingress-controller cloudflare/cloudflare-tunnel-remote \
             --namespace default \
-            --set cloudflare.tunnelSecret=tunnel-credentials \
-            --set cloudflare.tunnelId=9dff4c32-7941-49b4-a170-e6010c597c81
+            --set cloudflare.tunnel_token="${{ secrets.CF_TUNNEL_TOKEN }}"
 
   # Job 6: Deploy Application for DAST Testing
   deploy-to-kubernetes:
