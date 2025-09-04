@@ -166,16 +166,20 @@ jobs:
         id: checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          # This will add both a CLI output to the console and create a results.sarif file
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
+          # Escanea los manifiestos en la carpeta k8s
+          directory: ./k8s
+          framework: kubernetes
+          # Soft fail: reporta errores pero no detiene el pipeline
+          # Esto es común para IaC, para revisar antes de bloquear.
           soft_fail: true
+          # Genera un reporte en formato SARIF para subirlo a GitHub
+          output_format: sarif
+          output_file_path: results.sarif
         
       - name: Upload Checkov scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
-          sarif_file: checkov-results.sarif
+          sarif_file: results.sarif
 
   # Job 5: Build and Push Docker Image
   docker-build-push:

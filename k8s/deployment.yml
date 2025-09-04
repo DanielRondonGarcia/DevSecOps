@@ -1,0 +1,41 @@
+# k8s/deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devsecops-app-deployment
+  labels:
+    app: devsecops-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devsecops-app
+  template:
+    metadata:
+      labels:
+        app: devsecops-app
+    spec:
+      containers:
+      - name: devsecops-app-container
+        # La imagen que construyes en tu pipeline
+        image: ghcr.io/danielrondongarcia/devsecops:latest
+        ports:
+        - containerPort: 3000
+        # --- PROBLEMAS DE SEGURIDAD INTENCIONADOS ---
+        # 1. No se definen límites de recursos (CPU/Memoria)
+        # 2. No se especifica un contexto de seguridad para correr como non-root
+        # 3. Se permite la escalada de privilegios (comportamiento por defecto)
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devsecops-app-service
+spec:
+  selector:
+    app: devsecops-app
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
