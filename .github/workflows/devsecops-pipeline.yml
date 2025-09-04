@@ -15,7 +15,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/devsecops
+  IMAGE_NAME: ${{ toLower(github.repository_owner) }}/devsecops
 
 jobs:
   # Job 1: Build and Test
