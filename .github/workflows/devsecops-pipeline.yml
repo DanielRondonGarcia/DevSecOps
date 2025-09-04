@@ -250,6 +250,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && needs.docker-build-push.result == 'success'
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Connect to Tailscale
         uses: tailscale/github-action@v3
         with:
