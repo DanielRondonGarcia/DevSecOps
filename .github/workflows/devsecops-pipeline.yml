@@ -340,8 +340,8 @@ jobs:
           # Convertir el owner a minúsculas para evitar InvalidImageName
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           # Usamos un delimitador diferente en sed (#) para más robustez
-          sed -i "s#image: .*#image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}#g" k8s/deployment.yml
-          echo "Updated deployment.yml with image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}"
+          sed -i "s#IMAGE_PLACEHOLDER#ghcr.io/$OWNER_LOWER/devsecops:$IMAGE_TAG#g" k8s/deployment.yml
+          echo "Updated deployment.yml with image: ghcr.io/$OWNER_LOWER/devsecops:$IMAGE_TAG"          
           # Validar sintaxis YAML después de la sustitución
           echo "Validating YAML syntax..."
           kubectl apply --dry-run=client -f k8s/deployment.yml

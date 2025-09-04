@@ -18,7 +18,7 @@ spec:
       containers:
       - name: devsecops-app-container
         # La imagen que construyes en tu pipeline
-        image: ghcr.io/danielrondongarcia/devsecops:latest
+        image: IMAGE_PLACEHOLDER
         ports:
         - containerPort: 3000
         # --- PROBLEMAS DE SEGURIDAD INTENCIONADOS ---
