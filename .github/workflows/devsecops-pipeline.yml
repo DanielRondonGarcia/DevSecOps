@@ -190,6 +190,7 @@ jobs:
     if: always() && (needs.sast-sonarqube.result == 'success' || needs.sast-sonarqube.result == 'skipped') && (needs.sca-trivy.result == 'success' || needs.sca-trivy.result == 'skipped') && (needs.iac-security-checkov.result == 'success' || needs.iac-security-checkov.result == 'skipped')
     outputs:
       image-url: ${{ steps.meta.outputs.tags }}
+      image-tag: sha-${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -267,8 +268,11 @@ jobs:
             
       - name: Update image tag in Kubernetes manifest
         run: |
-          sed -i "s|image: ghcr.io/danielrondongarcia/devsecops:latest|image: ghcr.io/${{ steps.string-utils.outputs.lowercase }}:${{ github.sha }}|g" k8s/deployment.yml
-          echo "Updated deployment.yml with image: ghcr.io/${{ steps.string-utils.outputs.lowercase }}:${{ github.sha }}"
+          # CAMBIO CLAVE: Leemos la etiqueta corta exacta de la salida del job anterior
+          IMAGE_TAG=${{ needs.docker-build-push.outputs.image-tag }}
+          # Usamos un delimitador diferente en sed (#) para más robustez
+          sed -i "s#image: .*#image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}#g" k8s/deployment.yml
+          echo "Updated deployment.yml with image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
           
       - name: Apply Kubernetes manifests
         run: |
