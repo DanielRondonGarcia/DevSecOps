@@ -1,0 +1,25 @@
+# k8s/service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  # Este nombre debe coincidir con el que pusiste en ingress.yml
+  name: devsecops-app-service
+spec:
+  # Este 'selector' es la parte más importante.
+  # Le dice al Service qué Pods debe gestionar.
+  # Debe coincidir exactamente con la etiqueta de tus Pods en deployment.yml.
+  selector:
+    app: devsecops-app
+  
+  # ClusterIP es el tipo de servicio por defecto.
+  # Crea una IP interna estable solo accesible desde dentro del clúster.
+  # Es perfecto porque no queremos exponerlo directamente, para eso está el Ingress.
+  type: ClusterIP
+  
+  ports:
+  - name: http
+    protocol: TCP
+    # El puerto en el que el Service escuchará (la "extensión interna")
+    port: 80
+    # El puerto al que el Service enviará el tráfico (el puerto de tu contenedor Node.js)
+    targetPort: 3000
