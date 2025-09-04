@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
   security-events: write
   actions: read
 
@@ -52,7 +53,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha,format=short,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
   # Job 2: SAST - Static Application Security Testing with SonarQube
