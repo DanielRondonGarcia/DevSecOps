@@ -281,19 +281,11 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           echo "Cloudflare tunnel secret created/updated successfully."
 
-      - name: Add Cloudflare Helm repo
+      - name: Deploy Cloudflare Tunnel
         run: |
-          helm repo add cloudflare https://cloudflare.github.io/helm-charts
-          helm repo update
-
-      - name: Install/Upgrade Cloudflare Ingress Controller
-        run: |
-          # El comando 'helm upgrade --install' es idempotente.
-          # Instala el chart si no existe, o lo actualiza si ya existe.
-          helm upgrade --install my-ingress-controller cloudflare/cloudflare-tunnel \
-            --namespace default \
-            --set cloudflare.secretName=tunnel-credentials \
-            --set cloudflare.tunnelId=9dff4c32-7941-49b4-a170-e6010c597c81
+          # Aplicar el deployment directo de cloudflared
+          kubectl apply -f k8s/cloudflared-deployment.yml
+          echo "Cloudflare tunnel deployment applied successfully."
 
   # Job 6: Deploy Application for DAST Testing
   deploy-to-kubernetes:
