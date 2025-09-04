@@ -1,0 +1,56 @@
+# k8s/network-policy.yml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: devsecops-app-network-policy
+  namespace: default
+spec:
+  # Aplicar esta política a los pods con la etiqueta app: devsecops-app
+  podSelector:
+    matchLabels:
+      app: devsecops-app
+  
+  # Tipos de tráfico que esta política afecta
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Reglas de tráfico entrante (Ingress)
+  ingress:
+  # Permitir tráfico HTTP desde otros pods en el mismo namespace
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 3000
+  
+  # Permitir tráfico desde el Ingress Controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+  
+  # Reglas de tráfico saliente (Egress)
+  egress:
+  # Permitir DNS (necesario para resolución de nombres)
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Permitir tráfico HTTPS saliente (para APIs externas si es necesario)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # Permitir tráfico HTTP saliente (para APIs externas si es necesario)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80

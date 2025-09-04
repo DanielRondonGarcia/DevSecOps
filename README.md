@@ -73,6 +73,130 @@ graph TD
     I --> K[Nuevo release publicado!];
 ```
 
+## Configuración DevSecOps
+
+### Requisitos Previos
+
+Para que el pipeline DevSecOps funcione correctamente, necesitas tener configurados los siguientes elementos:
+
+#### 1. Infraestructura
+- **Kubernetes Cluster**: Un cluster de Kubernetes funcional (local o en la nube)
+- **kubectl**: Herramienta de línea de comandos configurada para acceder al cluster
+- **Docker**: Para construir las imágenes de contenedor
+- **Cuenta de Cloudflare**: Para el túnel y gestión de DNS
+- **Cuenta de SonarQube**: Para análisis de calidad de código
+
+#### 2. Herramientas de Seguridad
+- **OWASP ZAP**: Para pruebas de seguridad DAST (se instala automáticamente en el pipeline)
+- **Trivy**: Para escaneo de vulnerabilidades en contenedores
+- **Tailscale**: Para conectividad segura al cluster
+
+### Secretos Requeridos en GitHub
+
+Configura los siguientes secretos en tu repositorio de GitHub (Settings > Secrets and variables > Actions):
+
+#### Cloudflare
+```
+CF_CLIENT_ID          # Client ID de Cloudflare API
+CF_CLIENT_SECRET      # Client Secret de Cloudflare API  
+CF_TUNNEL_TOKEN       # Token del túnel de Cloudflare
+```
+
+#### Registro de Imágenes
+```
+IMAGE_REGISTRY_TOKEN  # Token para el registro de contenedores
+```
+
+#### Kubernetes
+```
+KUBE_CONFIG          # Configuración base64 del cluster de Kubernetes
+```
+
+#### SonarQube
+```
+SONAR_HOST_URL       # URL del servidor SonarQube
+SONAR_TOKEN          # Token de autenticación de SonarQube
+```
+
+#### Tailscale
+```
+TAILSCALE_AUTH_KEY   # Clave de autenticación de Tailscale
+```
+
+#### Release Please
+```
+MY_RELEASE_PLEASE_TOKEN  # Token para automatización de releases
+```
+
+### Configuración del Túnel de Cloudflare
+
+#### Paso 1: Crear el Túnel
+1. Accede al dashboard de Cloudflare
+2. Ve a **Zero Trust > Access > Tunnels**
+3. Crea un nuevo túnel y anota el **Tunnel ID** y **Token**
+
+#### Paso 2: Configurar el Hostname Público
+1. En el dashboard del túnel, ve a **Public Hostnames**
+2. Agrega una nueva configuración:
+   - **Subdomain**: `app`
+   - **Domain**: `tu-dominio.com`
+   - **Path**: `/`
+   - **Type**: `HTTP`
+   - **URL**: `http://devsecops-app-service:80`
+
+#### Paso 3: Actualizar Configuración
+Actualiza el archivo `k8s/cloudflared-deployment.yml` con tu Tunnel ID:
+```yaml
+command: ["cloudflared", "tunnel", "run", "--token", "$(TUNNEL_TOKEN)", "TU_TUNNEL_ID"]
+```
+
+Actualiza el archivo `k8s/ingress.yml` con tu dominio:
+```yaml
+spec:
+  rules:
+  - host: app.tu-dominio.com
+```
+
+### Pipeline DevSecOps
+
+El pipeline incluye las siguientes etapas:
+
+1. **Build & Test**: Construcción y pruebas unitarias
+2. **Security Scanning**: 
+   - Análisis estático con SonarQube
+   - Escaneo de vulnerabilidades con Trivy
+3. **Container Build**: Construcción de imagen Docker
+4. **Deploy**: Despliegue a Kubernetes
+5. **DAST**: Pruebas de seguridad dinámicas con OWASP ZAP
+6. **Security Summary**: Reporte consolidado de seguridad
+
+### Estructura de Archivos Kubernetes
+
+```
+k8s/
+├── deployment.yml              # Deployment de la aplicación
+├── service.yml                 # Servicio de Kubernetes
+├── cloudflared-deployment.yml  # Deployment del túnel Cloudflare
+└── ingress.yml                # Configuración de Ingress
+```
+
+### Solución de Problemas
+
+#### Túnel de Cloudflare no conecta
+- Verifica que el `CF_TUNNEL_TOKEN` sea correcto
+- Confirma que el Tunnel ID en `cloudflared-deployment.yml` coincida
+- Revisa los logs: `kubectl logs -l app=cloudflared-tunnel`
+
+#### Aplicación no accesible
+- Verifica que el hostname público esté configurado en Cloudflare
+- Confirma que el dominio apunte a los nameservers de Cloudflare
+- Revisa el estado del ingress: `kubectl get ingress`
+
+#### Fallos en el pipeline
+- Verifica que todos los secretos estén configurados
+- Confirma que el cluster de Kubernetes sea accesible
+- Revisa los logs del pipeline en GitHub Actions
+
 ## Test
 
 PRueba v1.1.2
