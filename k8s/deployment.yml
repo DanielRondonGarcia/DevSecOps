@@ -25,17 +25,3 @@ spec:
         # 1. No se definen límites de recursos (CPU/Memoria)
         # 2. No se especifica un contexto de seguridad para correr como non-root
         # 3. Se permite la escalada de privilegios (comportamiento por defecto)
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: devsecops-app-service
-spec:
-  selector:
-    app: devsecops-app
-  type: LoadBalancer
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3000
