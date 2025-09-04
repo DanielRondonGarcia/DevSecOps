@@ -15,7 +15,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ toLower(github.repository_owner) }}/devsecops
+  IMAGE_NAME: ${{ github.repository_owner }}/devsecops
 
 jobs:
   # Job 1: Build and Test
@@ -285,9 +285,11 @@ jobs:
         run: |
           # CAMBIO CLAVE: Leemos la etiqueta corta exacta de la salida del job anterior
           IMAGE_TAG=${{ needs.docker-build-push.outputs.image-tag }}
+          # Convertir el owner a minúsculas para evitar InvalidImageName
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           # Usamos un delimitador diferente en sed (#) para más robustez
-          sed -i "s#image: .*#image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}#g" k8s/deployment.yml
-          echo "Updated deployment.yml with image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+          sed -i "s#image: .*#image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}#g" k8s/deployment.yml
+          echo "Updated deployment.yml with image: ${{ env.REGISTRY }}/${OWNER_LOWER}/devsecops:${IMAGE_TAG}"
           
       - name: Apply Kubernetes manifests
         run: |
