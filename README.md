@@ -98,7 +98,6 @@ Configura los siguientes secretos en tu repositorio de GitHub (Settings > Secret
 #### Cloudflare
 ```
 CF_CLIENT_ID          # Client ID de Cloudflare API
-CF_CLIENT_SECRET      # Client Secret de Cloudflare API  
 CF_TUNNEL_TOKEN       # Token del túnel de Cloudflare
 ```
 
