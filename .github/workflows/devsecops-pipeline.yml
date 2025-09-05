@@ -11,6 +11,8 @@ permissions:
   packages: write
   security-events: write
   actions: read
+  issues: write
+  pull-requests: write
 
 env:
   REGISTRY: ghcr.io
@@ -487,6 +489,7 @@ jobs:
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
@@ -516,12 +519,18 @@ jobs:
 
             comment += '\nDetailed reports are available in the workflow artifacts.';
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+              console.log('Comment posted successfully');
+            } catch (error) {
+              console.log('Failed to post comment:', error.message);
+              console.log('ZAP scan results are still available in artifacts');
+            }
 
   # Job 8: Security Summary Report
   security-summary:
