@@ -3,7 +3,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: devsecops-app-network-policy
-  namespace: default
+  namespace: devsecops
 spec:
   # Aplicar esta política a los pods con la etiqueta app: devsecops-app
   podSelector:

@@ -4,6 +4,7 @@ kind: Service
 metadata:
   # Este nombre debe coincidir con el que pusiste en ingress.yml
   name: devsecops-app-service
+  namespace: devsecops
   annotations:
     # Anotaciones de seguridad para el servicio
     service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:region:account:certificate/cert-id"

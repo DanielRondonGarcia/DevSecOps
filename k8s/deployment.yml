@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: devsecops-app-deployment
+  namespace: devsecops
   labels:
     app: devsecops-app
 spec:
@@ -23,9 +24,10 @@ spec:
         fsGroup: 2000
         seccompProfile:
           type: RuntimeDefault
+      # Configurar automountServiceAccountToken
+      automountServiceAccountToken: false
       containers:
       - name: devsecops-app-container
-        # La imagen que construyes en tu pipeline
         image: IMAGE_PLACEHOLDER
         ports:
         - containerPort: 3000

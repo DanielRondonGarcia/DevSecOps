@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cloudflared-tunnel
+  namespace: devsecops
   labels:
     app: cloudflared-tunnel
 spec:
@@ -14,9 +15,28 @@ spec:
       labels:
         app: cloudflared-tunnel
     spec:
+      # Contexto de seguridad a nivel de Pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      # Configurar automountServiceAccountToken
+      automountServiceAccountToken: false
       containers:
       - name: cloudflared
         image: cloudflare/cloudflared:latest
+        # Contexto de seguridad a nivel de contenedor
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: TUNNEL_TOKEN
           valueFrom:
@@ -38,3 +58,27 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
+        # Health checks
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep cloudflared"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep cloudflared"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        # Volumen temporal para escritura
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
