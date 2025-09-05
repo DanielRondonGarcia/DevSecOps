@@ -278,6 +278,7 @@ jobs:
           
           # 3. Creamos el secreto con el archivo credentials.json y el token
           kubectl create secret generic tunnel-credentials \
+            --namespace=devsecops \
             --from-file=credentials.json=credentials.json \
             --from-literal=token="${{ secrets.CF_TUNNEL_TOKEN }}" \
             --dry-run=client -o yaml | kubectl apply -f -

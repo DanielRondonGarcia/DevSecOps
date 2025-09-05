@@ -17,6 +17,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });
 });
 
+app.get('/ready', (req, res) => {
+  res.json({ status: 'ready', timestamp: new Date().toISOString() });
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
