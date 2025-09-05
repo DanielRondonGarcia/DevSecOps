@@ -400,7 +400,7 @@ jobs:
         with:
           target: ${{ needs.deploy-to-kubernetes.outputs.app-url }}
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a -d -P 8080 -S -T 60"
+          cmd_options: "-a -d -T 60"
         continue-on-error: true
 
       - name: Create ZAP report directory
@@ -411,7 +411,7 @@ jobs:
         with:
           target: ${{ needs.deploy-to-kubernetes.outputs.app-url }}
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a -j -d -P 8080 -T 120 -z '-config spider.maxDuration=5'"
+          cmd_options: "-a -j -d -T 120"
         continue-on-error: true
 
       - name: Process ZAP Results
