@@ -1,8 +1,8 @@
-name: DevSecOps Pipeline
+name: DevSecOps Pull Request Validator
 
 on:
-  push:
-    branches: [main, develop]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -10,6 +10,7 @@ permissions:
   security-events: write
   actions: read
   issues: write
+  pull-requests: write
 
 env:
   REGISTRY: ghcr.io
@@ -181,202 +182,10 @@ jobs:
         with:
           sarif_file: results.sarif
 
-  # Job 5: Build and Push Docker Image
-  docker-build-push:
-    runs-on: ubuntu-latest
-    needs: [sast-sonarqube, sca-trivy, iac-security-checkov]
-    # Solo se ejecuta en push a main/develop, no en PRs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && always() && (needs.sast-sonarqube.result == 'success' || needs.sast-sonarqube.result == 'skipped') && (needs.sca-trivy.result == 'success' || needs.sca-trivy.result == 'skipped') && (needs.iac-security-checkov.result == 'success' || needs.iac-security-checkov.result == 'skipped')
-    outputs:
-      image-url: ${{ steps.meta.outputs.tags }}
-      image-tag: ${{ steps.extract_sha_tag.outputs.sha_tag }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,format=short,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Extract short SHA tag for deployment
-        id: extract_sha_tag
-        shell: bash
-        run: |
-          echo "All computed tags:"
-          echo "${{ steps.meta.outputs.tags }}"
-          SHA_LINE=$(echo "${{ steps.meta.outputs.tags }}" | grep -E ':sha-[0-9a-f]+' | head -n 1 || true)
-          if [ -z "$SHA_LINE" ]; then
-            echo "No sha-* tag found in metadata tags."
-            exit 1
-          fi
-          SHA_TAG=${SHA_LINE##*:}
-          echo "Using SHA tag: $SHA_TAG"
-          echo "sha_tag=$SHA_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  setup-cloudflare-ingress:
-    name: Setup Cloudflare Ingress
-    runs-on: ubuntu-latest
-    needs: [docker-build-push] # Se ejecuta después del build
-    # Solo se ejecuta en push a main, no en PRs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker-build-push.result == 'success'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
-
-      - name: Configure kubectl
-        run: |
-          mkdir -p ${HOME}/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > ${HOME}/.kube/config
-          chmod 600 ${HOME}/.kube/config
-
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: "v3.13.1" # O la versión que prefieras
-
-      - name: Create Cloudflare tunnel secret
-        run: |
-          # 1. Obtenemos el token del secreto de GitHub
-          TUNNEL_TOKEN="${{ secrets.CF_TUNNEL_TOKEN }}"
-
-          # 2. Creamos el archivo credentials.json con el formato correcto
-          echo '{"AccountTag":"","TunnelSecret":"","TunnelID":"9dff4c32-7941-49b4-a170-e6010c597c81"}' > credentials.json
-
-          # 3. Creamos el secreto con el archivo credentials.json y el token
-          kubectl create secret generic tunnel-credentials \
-            --namespace=devsecops \
-            --from-file=credentials.json=credentials.json \
-            --from-literal=token="${{ secrets.CF_TUNNEL_TOKEN }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Cloudflare tunnel secret created/updated successfully."
-
-      - name: Deploy Cloudflare Tunnel
-        run: |
-          # Crear el namespace primero
-          kubectl apply -f k8s/namespace.yml
-          # Aplicar el deployment directo de cloudflared
-          kubectl apply -f k8s/cloudflared-deployment.yml
-          echo "Cloudflare tunnel deployment applied successfully."
-
-  # Job 6: Deploy Application for DAST Testing
-  deploy-to-kubernetes:
-    runs-on: ubuntu-latest
-    needs: [setup-cloudflare-ingress]
-    environment: production
-    outputs:
-      app-url: ${{ steps.get-app-url.outputs.url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
-          tags: "tag:ci-runner"
-
-      - name: Configure kubectl
-        run: |
-          mkdir -p ${HOME}/.kube
-          # Decodifica el secreto y escribe el archivo de configuración
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > ${HOME}/.kube/config
-          chmod 600 ${HOME}/.kube/config
-
-      - name: Convert repository name to lowercase
-        id: string-utils
-        uses: ASzc/change-string-case-action@v6
-        with:
-          string: ${{ github.repository }}
-
-      - name: Create Image Pull Secret in Kubernetes
-        run: |
-          # Este comando es idempotente, no fallará si el secreto ya existe
-          kubectl create secret docker-registry ghcr-secret \
-            --namespace=devsecops \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.IMAGE_REGISTRY_TOKEN }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Update image tag in Kubernetes manifest
-        run: |
-          # CAMBIO CLAVE: Calculamos la etiqueta corta aquí mismo, eliminando la dependencia de 'outputs'.
-          GIT_SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
-          IMAGE_TAG="sha-$GIT_SHA_SHORT"
-
-          # Convertir el owner a minúsculas
-          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-
-          # PASO DE DEPURACIÓN: Imprimimos la imagen completa para verificar en los logs
-          echo "Full image name to be applied: ghcr.io/$OWNER_LOWER/devsecops:$IMAGE_TAG"
-
-          # Usamos sed para reemplazar el placeholder
-          sed -i "s#IMAGE_PLACEHOLDER#ghcr.io/$OWNER_LOWER/devsecops:$IMAGE_TAG#g" k8s/deployment.yml
-
-      - name: Apply Kubernetes manifests
-        run: |
-          sleep 1
-          # Aplicar network policy para seguridad
-          kubectl apply -f k8s/network-policy.yml
-          kubectl apply -f k8s/deployment.yml
-          kubectl apply -f k8s/service.yml
-          kubectl apply -f k8s/ingress.yml
-          echo "Deployment successful!"
-
-      - name: Get application URL
-        id: get-app-url
-        run: |
-          # Obtener la URL de la aplicación desde el ingress
-          APP_URL="https://app.rondon.cloud"
-          echo "url=$APP_URL" >> $GITHUB_OUTPUT
-          echo "Application URL: $APP_URL"
-
-      - name: Deploy to Production
-        run: |
-          echo "🚀 Deploying to production https://app.rondon.cloud"
-          echo "Branch: ${{ github.ref }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Image: ${{ needs.docker-build-push.outputs.image-url }}"
-          # Add your production deployment logic here
-          # For example: kubectl, docker-compose, cloud provider CLI, etc.
-
   # Job 7: DAST - Dynamic Application Security Testing with OWASP ZAP
   dast-owasp-zap:
     runs-on: ubuntu-latest
-    needs: deploy-to-kubernetes
+    needs: build-and-test
     # Se ejecuta siempre después de SAST, tanto en PRs como en main
     steps:
       - name: Checkout code
@@ -479,6 +288,54 @@ jobs:
             report_md.md
             zap-reports-*/
           retention-days: 30
+
+      - name: Comment ZAP Results on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            let comment = '## 🔒 DAST Security Scan Results\n\n';
+
+            if (fs.existsSync('report_json.json')) {
+              const report = JSON.parse(fs.readFileSync('report_json.json', 'utf8'));
+              const alerts = report.site[0]?.alerts || [];
+
+              const highRisk = alerts.filter(a => a.riskcode === '3').length;
+              const mediumRisk = alerts.filter(a => a.riskcode === '2').length;
+              const lowRisk = alerts.filter(a => a.riskcode === '1').length;
+
+              comment += `### Security Issues Found:\n`;
+              comment += `- 🔴 High Risk: ${highRisk}\n`;
+              comment += `- 🟡 Medium Risk: ${mediumRisk}\n`;
+              comment += `- 🟢 Low Risk: ${lowRisk}\n\n`;
+
+              if (highRisk > 0) {
+                comment += `⚠️ **High risk vulnerabilities detected!** Please review the security report.\n`;
+              } else {
+                comment += `✅ No high risk vulnerabilities detected.\n`;
+              }
+            } else {
+              comment += 'ZAP scan completed but no detailed results available.\n';
+            }
+
+            comment += '\nDetailed reports are available in the workflow artifacts.';
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+              console.log('Comment posted successfully');
+            } catch (error) {
+              console.log('Failed to post comment:', error.message);
+              console.log('ZAP scan results are still available in artifacts');
+            }
+
   # Job 8: Security Summary Report
   security-summary:
     runs-on: ubuntu-latest
