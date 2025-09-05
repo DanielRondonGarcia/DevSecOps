@@ -2,6 +2,9 @@ const express = require('express');
 const { version } = require('../package.json');
 const utils = require('./utils');
 const app = express();
+
+// Disable X-Powered-By header for security
+app.disable('x-powered-by');
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
