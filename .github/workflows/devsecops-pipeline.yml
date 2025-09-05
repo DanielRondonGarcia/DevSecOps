@@ -405,7 +405,9 @@ jobs:
         continue-on-error: true
 
       - name: Create ZAP report directory
-        run: mkdir -p zap-reports
+        run: |
+          GIT_SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          mkdir -p zap-reports-$GIT_SHA_SHORT
 
       - name: ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.10.0
@@ -420,17 +422,18 @@ jobs:
         run: |
           echo "Processing ZAP scan results..."
           
-          # Crear directorio para reportes procesados
-          mkdir -p processed-reports
+          # Usar el directorio dinámico creado anteriormente
+          GIT_SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          REPORT_DIR="zap-reports-$GIT_SHA_SHORT"
           
           # Verificar si existen los archivos de reporte
           if [ -f "report_html.html" ]; then
-            cp report_html.html processed-reports/
+            cp report_html.html "$REPORT_DIR/"
             echo "HTML report found and copied"
           fi
           
           if [ -f "report_json.json" ]; then
-            cp report_json.json processed-reports/
+            cp report_json.json "$REPORT_DIR/"
             echo "JSON report found and copied"
             
             # Extraer estadísticas básicas del JSON
@@ -441,7 +444,7 @@ jobs:
           fi
           
           if [ -f "report_md.md" ]; then
-            cp report_md.md processed-reports/
+            cp report_md.md "$REPORT_DIR/"
             echo "Markdown report found and copied"
           fi
 
@@ -449,12 +452,12 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: zap-security-reports
+          name: zap-security-reports-${{ github.sha }}
           path: |
             report_html.html
             report_json.json
             report_md.md
-            processed-reports/
+            zap-reports-*/
           retention-days: 30
 
       - name: Comment ZAP Results on PR
