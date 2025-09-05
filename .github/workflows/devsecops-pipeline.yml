@@ -298,6 +298,8 @@ jobs:
     needs: [setup-cloudflare-ingress]
     # Se ejecuta solo en la rama principal
     if: github.ref == 'refs/heads/main'
+    outputs:
+      app-url: ${{ steps.get-app-url.outputs.url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -355,20 +357,50 @@ jobs:
           kubectl apply -f k8s/ingress.yml
           echo "Deployment successful!"
 
+      - name: Get application URL
+        id: get-app-url
+        run: |
+          # Obtener la URL de la aplicación desde el ingress
+          APP_URL="https://app.rondon.cloud"
+          echo "url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "Application URL: $APP_URL"
+
   # Job 7: DAST - Dynamic Application Security Testing with OWASP ZAP
   dast-owasp-zap:
     runs-on: ubuntu-latest
     needs: deploy-to-kubernetes
+    # Se ejecuta solo en la rama principal después del despliegue exitoso
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ZAP Scan
+      - name: Wait for application to be ready
+        run: |
+          echo "Waiting for application to be fully ready..."
+          sleep 30
+          
+          # Verificar que la aplicación responda correctamente
+          APP_URL="${{ needs.deploy-to-kubernetes.outputs.app-url }}"
+          echo "Testing application readiness at: $APP_URL"
+          
+          # Intentar conectar hasta 5 veces con intervalos de 10 segundos
+          for i in {1..5}; do
+            if curl -f -s "$APP_URL/health" > /dev/null; then
+              echo "Application is ready!"
+              break
+            else
+              echo "Attempt $i: Application not ready yet, waiting..."
+              sleep 10
+            fi
+          done
+
+      - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          target: ${{ needs.deploy-for-testing.outputs.app-url }}
+          target: ${{ needs.deploy-to-kubernetes.outputs.app-url }}
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a"
+          cmd_options: "-a -d -P 8080 -S -T 60"
         continue-on-error: true
 
       - name: Create ZAP report directory
@@ -377,20 +409,92 @@ jobs:
       - name: ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.10.0
         with:
-          target: ${{ needs.deploy-for-testing.outputs.app-url }}
+          target: ${{ needs.deploy-to-kubernetes.outputs.app-url }}
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a -j"
+          cmd_options: "-a -j -d -P 8080 -T 120 -z '-config spider.maxDuration=5'"
         continue-on-error: true
+
+      - name: Process ZAP Results
+        if: always()
+        run: |
+          echo "Processing ZAP scan results..."
+          
+          # Crear directorio para reportes procesados
+          mkdir -p processed-reports
+          
+          # Verificar si existen los archivos de reporte
+          if [ -f "report_html.html" ]; then
+            cp report_html.html processed-reports/
+            echo "HTML report found and copied"
+          fi
+          
+          if [ -f "report_json.json" ]; then
+            cp report_json.json processed-reports/
+            echo "JSON report found and copied"
+            
+            # Extraer estadísticas básicas del JSON
+            if command -v jq &> /dev/null; then
+              echo "=== ZAP Scan Summary ==="
+              jq -r '.site[0].alerts[] | "Alert: \(.name) - Risk: \(.riskdesc) - Confidence: \(.confidence)"' report_json.json | head -10
+            fi
+          fi
+          
+          if [ -f "report_md.md" ]; then
+            cp report_md.md processed-reports/
+            echo "Markdown report found and copied"
+          fi
 
       - name: Upload ZAP scan results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: zap-reports
+          name: zap-security-reports
           path: |
             report_html.html
             report_json.json
             report_md.md
+            processed-reports/
+          retention-days: 30
+
+      - name: Comment ZAP Results on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🔒 DAST Security Scan Results\n\n';
+            
+            if (fs.existsSync('report_json.json')) {
+              const report = JSON.parse(fs.readFileSync('report_json.json', 'utf8'));
+              const alerts = report.site[0]?.alerts || [];
+              
+              const highRisk = alerts.filter(a => a.riskcode === '3').length;
+              const mediumRisk = alerts.filter(a => a.riskcode === '2').length;
+              const lowRisk = alerts.filter(a => a.riskcode === '1').length;
+              
+              comment += `### Security Issues Found:\n`;
+              comment += `- 🔴 High Risk: ${highRisk}\n`;
+              comment += `- 🟡 Medium Risk: ${mediumRisk}\n`;
+              comment += `- 🟢 Low Risk: ${lowRisk}\n\n`;
+              
+              if (highRisk > 0) {
+                comment += `⚠️ **High risk vulnerabilities detected!** Please review the security report.\n`;
+              } else {
+                comment += `✅ No high risk vulnerabilities detected.\n`;
+              }
+            } else {
+              comment += 'ZAP scan completed but no detailed results available.\n';
+            }
+            
+            comment += '\nDetailed reports are available in the workflow artifacts.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   # Job 8: Security Summary Report
   security-summary:
@@ -420,7 +524,9 @@ jobs:
     steps:
       - name: Deploy to Production
         run: |
-          echo "🚀 Deploying to production..."
+          echo "🚀 Deploying to production https://app.rondon.cloud"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
           echo "Image: ${{ needs.docker-build-push.outputs.image-url }}"
           # Add your production deployment logic here
           # For example: kubectl, docker-compose, cloud provider CLI, etc.
