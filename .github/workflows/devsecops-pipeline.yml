@@ -285,6 +285,8 @@ jobs:
 
       - name: Deploy Cloudflare Tunnel
         run: |
+          # Crear el namespace primero
+          kubectl apply -f k8s/namespace.yml
           # Aplicar el deployment directo de cloudflared
           kubectl apply -f k8s/cloudflared-deployment.yml
           echo "Cloudflare tunnel deployment applied successfully."
@@ -345,8 +347,6 @@ jobs:
       - name: Apply Kubernetes manifests
         run: |
           sleep 1
-          # Crear el namespace primero
-          kubectl apply -f k8s/namespace.yml
           # Aplicar network policy para seguridad
           kubectl apply -f k8s/network-policy.yml
           kubectl apply -f k8s/deployment.yml
