@@ -13,7 +13,7 @@ RUN npm ci --only=production \
     && rm -f package-lock.json
 
 # Copy application code
-COPY index.js ./
+COPY src/ ./src/
 
 # Remove npm (runtime doesn't need npm, only node) and create non-root user
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx || true \
@@ -30,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]

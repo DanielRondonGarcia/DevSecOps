@@ -2,10 +2,10 @@
   "name": "ci-cd",
   "version": "1.1.1",
   "description": "Proyecto de plantilla simple para demostrar un flujo de CI/CD.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "jest --coverage",
+    "start": "node src/index.js",
+    "test": "jest --config jest.config.js --coverage",
     "build": "pre-commit install"
   },
   "keywords": [
