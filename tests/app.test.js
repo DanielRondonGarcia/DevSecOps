@@ -164,7 +164,130 @@ describe('DevSecOps API Endpoints', () => {
     });
   });
 
-  describe('Error handling', () => {
+  describe('GET /debug', () => {
+    it('should return debug information with correct structure', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('debug');
+      expect(response.body.debug).toHaveProperty('client');
+      expect(response.body.debug).toHaveProperty('server');
+      expect(response.body.debug).toHaveProperty('request');
+    });
+
+    it('should return client information', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client).toHaveProperty('ip');
+      expect(client).toHaveProperty('userAgent');
+      expect(client).toHaveProperty('browser');
+    });
+
+    it('should return server information', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .expect(200);
+
+      const { server } = response.body.debug;
+      expect(server).toHaveProperty('timestamp');
+      expect(server).toHaveProperty('timezone');
+      expect(server).toHaveProperty('uptime');
+      expect(server).toHaveProperty('nodeVersion');
+      expect(typeof server.uptime).toBe('number');
+      expect(server.nodeVersion).toMatch(/^v\d+\.\d+\.\d+/);
+    });
+
+    it('should return request information', async () => {
+      const response = await request(app)
+        .get('/debug?test=value')
+        .expect(200);
+
+      const { request: reqInfo } = response.body.debug;
+      expect(reqInfo).toHaveProperty('method', 'GET');
+      expect(reqInfo).toHaveProperty('url', '/debug?test=value');
+      expect(reqInfo).toHaveProperty('headers');
+      expect(reqInfo).toHaveProperty('query');
+      expect(reqInfo.query).toHaveProperty('test', 'value');
+    });
+
+    it('should parse Chrome browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Chrome');
+    });
+
+    it('should parse Firefox browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Firefox');
+    });
+
+    it('should parse Edge browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Edge');
+    });
+
+    it('should parse Safari browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Safari');
+    });
+
+    it('should parse Opera browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 OPR/77.0.4054.277')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Opera');
+    });
+
+    it('should handle unknown browser correctly', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', 'SomeUnknownBrowser/1.0')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      expect(client.browser).toBe('Other');
+    });
+
+    it('should handle empty user agent', async () => {
+      const response = await request(app)
+        .get('/debug')
+        .set('User-Agent', '')
+        .expect(200);
+
+      const { client } = response.body.debug;
+      // Empty user agent should return Unknown
+      expect(['Unknown', 'Other']).toContain(client.browser);
+    });
+  });
+
+  describe('Error Handling', () => {
     it('should return 404 for non-existent endpoints', async () => {
       await request(app)
         .get('/non-existent')
