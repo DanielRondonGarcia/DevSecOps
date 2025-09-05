@@ -1,35 +1,6 @@
 const request = require('supertest');
-const express = require('express');
+const app = require('../src/index');
 const { version } = require('../package.json');
-const utils = require('../src/utils');
-
-// Crear una instancia de la aplicación para pruebas
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.json({
-    message: 'DevSecOps Pipeline Demo',
-    version: version,
-    security: 'Enhanced with automated security scanning'
-  });
-});
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', uptime: process.uptime() });
-});
-
-app.get('/ready', (req, res) => {
-  res.json({ status: 'ready', timestamp: new Date().toISOString() });
-});
-
-app.get('/sum', (req, res) => {
-  const { a, b } = req.query;
-  const sum = utils.sum(Number(a), Number(b));
-  res.json({ sum });
-});
 
 describe('DevSecOps API Endpoints', () => {
   describe('GET /', () => {
@@ -40,8 +11,8 @@ describe('DevSecOps API Endpoints', () => {
         .expect('Content-Type', /json/);
 
       expect(response.body).toHaveProperty('message', 'DevSecOps Pipeline Demo');
-      expect(response.body).toHaveProperty('version', version);
       expect(response.body).toHaveProperty('security', 'Enhanced with automated security scanning');
+      expect(response.body).not.toHaveProperty('version');
     });
 
     it('should return valid JSON structure', async () => {
@@ -50,7 +21,27 @@ describe('DevSecOps API Endpoints', () => {
         .expect(200);
 
       expect(typeof response.body).toBe('object');
-      expect(Object.keys(response.body)).toEqual(['message', 'version', 'security']);
+      expect(Object.keys(response.body)).toEqual(['message', 'security']);
+    });
+  });
+
+  describe('GET /version', () => {
+    it('should return version information', async () => {
+      const response = await request(app)
+        .get('/version')
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('version', version);
+    });
+
+    it('should return only version in response', async () => {
+      const response = await request(app)
+        .get('/version')
+        .expect(200);
+
+      expect(typeof response.body).toBe('object');
+      expect(Object.keys(response.body)).toEqual(['version']);
     });
   });
 

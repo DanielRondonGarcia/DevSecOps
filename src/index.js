@@ -9,7 +9,6 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({
     message: 'DevSecOps Pipeline Demo',
-    version: version,
     security: 'Enhanced with automated security scanning'
   });
 });
@@ -22,14 +21,20 @@ app.get('/ready', (req, res) => {
   res.json({ status: 'ready', timestamp: new Date().toISOString() });
 });
 
+app.get('/version', (req, res) => {
+  res.json({ version: version });
+});
+
 app.get('/sum', (req, res) => {
   const { a, b } = req.query;
   const sum = utils.sum(Number(a), Number(b));
   res.json({ sum });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
 
 module.exports = app;
